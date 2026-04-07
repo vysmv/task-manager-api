@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"strconv"
 
 	"github.com/vysmv/task-manager-api/internal/tasks"
 )
@@ -82,6 +83,50 @@ func (r *TasksRepository) Get(id int64) (tasks.Task, error) {
 			return tasks.Task{}, ErrTaskNotFound
 		}
 
+		return tasks.Task{}, err
+	}
+
+	return task, nil
+}
+
+func (r *TasksRepository) Update(id int64, title *string, done *bool) (tasks.Task, error) {
+	// формируем динамический UPDATE
+	query := "UPDATE tasks SET "
+	args := make([]any, 0)
+	argID := 1
+
+	if title != nil {
+		query += "title = $" + strconv.Itoa(argID)
+		args = append(args, *title)
+		argID++
+	}
+
+	if done != nil {
+		if len(args) > 0 {
+			query += ", "
+		}
+		query += "done = $" + strconv.Itoa(argID)
+		args = append(args, *done)
+		argID++
+	}
+
+	query += " WHERE id = $" + strconv.Itoa(argID)
+	args = append(args, id)
+
+	query += " RETURNING id, title, done"
+
+	var task tasks.Task
+
+	err := r.db.QueryRow(query, args...).Scan(
+		&task.ID,
+		&task.Title,
+		&task.Done,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return tasks.Task{}, ErrTaskNotFound
+		}
 		return tasks.Task{}, err
 	}
 

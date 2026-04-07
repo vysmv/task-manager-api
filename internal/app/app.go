@@ -29,6 +29,7 @@ func Run() error {
 	mux.HandleFunc("POST /tasks", tasksHandler.Create)
 	mux.HandleFunc("GET /tasks", tasksHandler.List)
 	mux.HandleFunc("GET /tasks/", tasksHandler.Get)
+	mux.HandleFunc("PATCH /tasks/", tasksHandler.Update) //New
 	mux.HandleFunc("DELETE /tasks/", tasksHandler.Delete)
 
 	server := &http.Server{
