@@ -2,20 +2,21 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/vysmv/task-manager-api/internal/http/response"
-	"github.com/vysmv/task-manager-api/internal/tasks"
+	"github.com/vysmv/task-manager-api/internal/tasks/repository"
 )
 
 type TasksHandler struct {
-	storage *tasks.MemoryStorage
+	repo *repository.TasksRepository
 }
 
-func NewTasksHandler(storage *tasks.MemoryStorage) *TasksHandler {
-	return &TasksHandler{storage: storage}
+func NewTasksHandler(repo *repository.TasksRepository) *TasksHandler {
+	return &TasksHandler{repo: repo}
 }
 
 func (h *TasksHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +32,21 @@ func (h *TasksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := h.storage.Create(req.Title)
+	task, err := h.repo.Create(req.Title)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "failed to create task")
+		return
+	}
 
 	response.WriteJSON(w, http.StatusCreated, task)
 }
 
 func (h *TasksHandler) List(w http.ResponseWriter, r *http.Request) {
-	tasks := h.storage.List()
+	tasks, err := h.repo.List()
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "failed to fetch tasks")
+		return
+	}
 
 	response.WriteJSON(w, http.StatusOK, tasks)
 }
@@ -46,17 +55,18 @@ func (h *TasksHandler) Get(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/tasks/")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		response.WriteJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid id",
-		})
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	task, ok := h.storage.Get(id)
-	if !ok {
-		response.WriteJSON(w, http.StatusNotFound, map[string]string{
-			"error": "task not found",
-		})
+	task, err := h.repo.Get(id)
+	if err != nil {
+		if errors.Is(err, repository.ErrTaskNotFound) {
+			response.WriteError(w, http.StatusNotFound, "task not found")
+			return
+		}
+
+		response.WriteError(w, http.StatusInternalServerError, "failed to fetch task")
 		return
 	}
 
@@ -67,17 +77,17 @@ func (h *TasksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/tasks/")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		response.WriteJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid id",
-		})
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	ok := h.storage.Delete(id)
-	if !ok {
-		response.WriteJSON(w, http.StatusNotFound, map[string]string{
-			"error": "task not found",
-		})
+	if err := h.repo.Delete(id); err != nil {
+		if errors.Is(err, repository.ErrTaskNotFound) {
+			response.WriteError(w, http.StatusNotFound, "task not found")
+			return
+		}
+
+		response.WriteError(w, http.StatusInternalServerError, "failed to delete task")
 		return
 	}
 

@@ -6,21 +6,26 @@ import (
 
 	"github.com/vysmv/task-manager-api/internal/config"
 	"github.com/vysmv/task-manager-api/internal/http/handlers"
-	"github.com/vysmv/task-manager-api/internal/tasks"
+	"github.com/vysmv/task-manager-api/internal/storage/postgres"
+	"github.com/vysmv/task-manager-api/internal/tasks/repository"
 )
 
 func Run() error {
 	cfg := config.MustLoad()
 
-	storage := tasks.NewMemoryStorage()
-	tasksHandler := handlers.NewTasksHandler(storage)
+	db, err := postgres.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	tasksRepo := repository.NewTasksRepository(db)
+	tasksHandler := handlers.NewTasksHandler(tasksRepo)
 
 	mux := http.NewServeMux()
 
-	// health
 	mux.HandleFunc("GET /health", handlers.Health)
 
-	// tasks
 	mux.HandleFunc("POST /tasks", tasksHandler.Create)
 	mux.HandleFunc("GET /tasks", tasksHandler.List)
 	mux.HandleFunc("GET /tasks/", tasksHandler.Get)
