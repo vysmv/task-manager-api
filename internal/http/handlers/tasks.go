@@ -19,21 +19,15 @@ func NewTasksHandler(storage *tasks.MemoryStorage) *TasksHandler {
 }
 
 func (h *TasksHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Title string `json:"title"`
-	}
+	var req CreateTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.WriteJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid json",
-		})
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	if strings.TrimSpace(req.Title) == "" {
-		response.WriteJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "title is required",
-		})
+	if errs := req.Validate(); len(errs) > 0 {
+		response.WriteValidationError(w, errs)
 		return
 	}
 
