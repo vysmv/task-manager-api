@@ -6,6 +6,7 @@ import (
 
 	"github.com/vysmv/task-manager-api/internal/config"
 	"github.com/vysmv/task-manager-api/internal/http/handlers"
+	"github.com/vysmv/task-manager-api/internal/http/middleware"
 	"github.com/vysmv/task-manager-api/internal/storage/postgres"
 	"github.com/vysmv/task-manager-api/internal/tasks/repository"
 )
@@ -34,7 +35,7 @@ func Run() error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTPPort,
-		Handler: mux,
+		Handler: middleware.Logging(mux),
 	}
 
 	fmt.Printf("server started on :%s\n", cfg.HTTPPort)
