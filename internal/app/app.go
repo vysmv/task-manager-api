@@ -28,14 +28,17 @@ func Run() error {
 	mux.HandleFunc("GET /health", handlers.Health)
 
 	mux.HandleFunc("POST /tasks", tasksHandler.Create)
-	mux.HandleFunc("GET /tasks", tasksHandler.List)
+	mux.Handle(
+		"GET /tasks",
+		middleware.Logging(http.HandlerFunc(tasksHandler.List)),
+	) // NEW!
 	mux.HandleFunc("GET /tasks/", tasksHandler.Get)
-	mux.HandleFunc("PATCH /tasks/", tasksHandler.Update) //New
+	mux.HandleFunc("PATCH /tasks/", tasksHandler.Update)
 	mux.HandleFunc("DELETE /tasks/", tasksHandler.Delete)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.HTTPPort,
-		Handler: middleware.Logging(mux),
+		Handler: mux,
 	}
 
 	fmt.Printf("server started on :%s\n", cfg.HTTPPort)
