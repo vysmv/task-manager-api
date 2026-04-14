@@ -30,7 +30,7 @@ func Register(tasksHandler *handlers.TasksHandler, mux *http.ServeMux) {
 
 	mux.Handle(
 		"DELETE /tasks/",
-		middleware.BasicAuth(http.HandlerFunc(tasksHandler.Delete)),
+		middleware.APIKeyAuth(http.HandlerFunc(tasksHandler.Delete)),
 	)
 
 }
